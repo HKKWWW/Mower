@@ -1,0 +1,32 @@
+gecaojiqiren\servo.o: ..\Hardware\servo.c
+gecaojiqiren\servo.o: ..\Hardware\servo.h
+gecaojiqiren\servo.o: ../Core/Inc/main.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
+gecaojiqiren\servo.o: ../Core/Inc/stm32f1xx_hal_conf.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xe.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Include/core_cm3.h
+gecaojiqiren\servo.o: E:\Keil_v5 MDK\ARM\ARMCC\Bin\..\include\stdint.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Include/cmsis_version.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
+gecaojiqiren\servo.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/system_stm32f1xx.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
+gecaojiqiren\servo.o: E:\Keil_v5 MDK\ARM\ARMCC\Bin\..\include\stddef.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc_ex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio_ex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_exti.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
+gecaojiqiren\servo.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+gecaojiqiren\servo.o: ../Core/Inc/tim.h
