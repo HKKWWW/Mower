@@ -1,0 +1,10 @@
+<launch>
+
+    <node pkg="Mower" type="Mower_node" name="Mower_node" output="screen" clear_params="true">
+
+        <rosparam file="$(find Mower)/config/costmap_common_params.yaml" command="load" ns="mower_costmap" />
+        <rosparam file="$(find Mower)/config/mower_costmap_params.yaml" command="load" />
+
+    </node>
+
+</launch>
