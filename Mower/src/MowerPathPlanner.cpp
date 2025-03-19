@@ -221,7 +221,7 @@ vector<cellIndex> MowerPathPlanning::GetPathInCV()
     return this->pathVec_;
 }
 
-void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经网络算法
+void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经网络算法 1111
 {
     cellIndex initPoint,nextPoint, currentPoint;
 //    initPoint.row = cellMat_.rows/2; //initPoint to be made interface.
