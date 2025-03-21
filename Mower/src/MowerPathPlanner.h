@@ -65,6 +65,8 @@ class MowerPathPlanning
         void GetBorderTrackingPathInCV(vector<cv::Point2i>&resultVec);
         vector<cellIndex> GetPathInCV();
 
+        bool Boundingjudge(int a, int b);
+
 
         bool initialized_;
         Mat srcMap_; //costmap的全局变量，但其格式已转化为opencv格式，其格式、分辨率均与代价地图相同
