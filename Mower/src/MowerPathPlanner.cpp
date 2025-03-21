@@ -24,7 +24,7 @@ MowerPathPlanning::MowerPathPlanning(costmap_2d::Costmap2DROS *costmap2d_ros) //
     cout << "The size of map is " << sizex << "  " << sizey << endl;
     resolution_ = costmap2d_->getResolution(); //分辨率
 
-    srcMap_ = Mat(sizey, sizex, CV_8U); //初始化srcMap_，注意在opencv::Mat中，x、y的对应为相反
+    srcMap_ = Mat(sizey, sizex, CV_8U); //初始化srcMap_，注意在opencv::Mat中，y对应的坐标为相反
     for (int r = 0; r < sizey; r++)
     {
         for (int c = 0; c < sizex; c++)
@@ -33,6 +33,23 @@ MowerPathPlanning::MowerPathPlanning(costmap_2d::Costmap2DROS *costmap2d_ros) //
             //getCost（）:获取代价值
         }
     }
+    /*
+        OPENCV坐标系
+        ----------------> X轴
+        |
+        |
+        |
+        |
+        \/ Y轴
+
+
+        ^ Y轴
+        |
+        |
+        |
+        |
+        --------------> X轴
+    */
 
     initializeMats();
     // initializeCoveredGrid();
@@ -66,46 +83,46 @@ bool MowerPathPlanning::initializeMats() //初始化降采样后的地图、空�
 //初始化降采样后的地图、空闲坐标变量(freeSpaceVec_)
 void MowerPathPlanning::getCellMatAndFreeSpace(Mat srcImg, Mat &cellMat, vector<cellIndex> &freeSpaceVec)
 {
-cellMat = Mat(srcImg.rows / SIZE_OF_CELL, srcImg.cols / SIZE_OF_CELL, srcImg.type()); //cellMat为降采样后的地图数据
+    cellMat = Mat(srcImg.rows / SIZE_OF_CELL, srcImg.cols / SIZE_OF_CELL, srcImg.type()); //cellMat为降采样后的地图数据
 
-freeSpaceVec.clear();
-bool isFree = true;
-int r = 0, c = 0, i = 0, j = 0;
-for (r = 0; r < cellMat.rows; r++)
-{
-    for (c = 0; c < cellMat.cols; c++)
+    freeSpaceVec.clear();
+    bool isFree = true;
+    int r = 0, c = 0, i = 0, j = 0;
+    for (r = 0; r < cellMat.rows; r++)
     {
-        isFree = true;
-        for (i = 0; i < SIZE_OF_CELL; i++)
+        for (c = 0; c < cellMat.cols; c++)
         {
-            for (j = 0; j < SIZE_OF_CELL; j++)
+            isFree = true;
+            for (i = 0; i < SIZE_OF_CELL; i++)
             {
-                if (srcImg.at<uchar>(r * SIZE_OF_CELL + i, c * SIZE_OF_CELL + j) != costmap_2d::FREE_SPACE)
+                for (j = 0; j < SIZE_OF_CELL; j++)
                 {
-                    isFree = false;
-                    i = SIZE_OF_CELL;
-                    break;
+                    if (srcImg.at<uchar>(r * SIZE_OF_CELL + i, c * SIZE_OF_CELL + j) != costmap_2d::FREE_SPACE)
+                    {
+                        isFree = false;
+                        i = SIZE_OF_CELL;
+                        break;
+                    }
                 }
             }
+            if (isFree)
+            {
+                cellIndex ci;
+                ci.row = r;
+                ci.col = c;
+                ci.theta = 0;
+                freeSpaceVec.push_back(ci); //将空闲区域坐标信息压入栈
+                cellMat.at<uchar>(r, c) = costmap_2d::FREE_SPACE; //0
+            }
+            else
+            {
+                cellMat.at<uchar>(r, c) = costmap_2d::LETHAL_OBSTACLE;
+            } //254
         }
-        if (isFree)
-        {
-            cellIndex ci;
-            ci.row = r;
-            ci.col = c;
-            ci.theta = 0;
-            freeSpaceVec.push_back(ci); //将空闲区域坐标信息压入栈
-            cellMat.at<uchar>(r, c) = costmap_2d::FREE_SPACE; //0
-        }
-        else
-        {
-            cellMat.at<uchar>(r, c) = costmap_2d::LETHAL_OBSTACLE;
-        } //254
     }
-}
-cout << "freespace size:" << freeSpaceVec.size() << endl;
-//imwrite("cellMat.jpg",cellMat);
-return;
+    cout << "freespace size:" << freeSpaceVec.size() << endl;
+    //imwrite("cellMat.jpg",cellMat);
+    return;
 }
 
 void MowerPathPlanning::initializeNeuralMat(Mat cellMat, Mat neuralizedMat) //初始化活力值地图
@@ -224,62 +241,81 @@ vector<cellIndex> MowerPathPlanning::GetPathInCV()
 void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经网络算法
 {
     cellIndex initPoint,nextPoint, currentPoint;
-//    initPoint.row = cellMat_.rows/2; //initPoint to be made interface.
-//    initPoint.col = cellMat_.cols/2;
-    initPoint.theta = 90;
-    if(!costmap2d_ros_->getRobotPose(initPose_))
+    
+    initPoint.theta = 90; //初始化姿态角度
+    if(!costmap2d_ros_->getRobotPose(initPose_)) //获得初始地图坐标系，注意该位置是相对世界坐标系
     {
-        ROS_INFO("Failed to get robot location! Please check where goes wrong!");
+        ROS_INFO("[mainPlanningLoop] Failed to get robot location!");
         return;
     }
-    //initPoint.row = initPose_.getOrigin().y()
-    unsigned int mx,my;
+    
+    unsigned int mx,my; //地图x、y坐标
     double wx = initPose_.pose.position.x;
     double wy = initPose_.pose.position.y;
-    //geometry_msgs::PoseStamped current_position;
-    //tf::poseStampedTFToMsg(global_pose, current_position);
 
-    bool getmapcoor = costmap2d_->worldToMap(wx,wy,mx,my);
+    bool getmapcoor = costmap2d_->worldToMap(wx, wy, mx, my); //将世界坐标系下的坐标转换为地图坐标系下的坐标
     if(!getmapcoor)
     {
-        ROS_INFO("Failed to get robot location in map! Please check where goes wrong!");
+        ROS_INFO("[mainPlanningLoop] Failed to get robot location in map!");
         return;
     }
+    /* 将ROS坐标系转换为OEPNCV坐标系 */
     initPoint.row = cellMat_.rows - my/SIZE_OF_CELL - 1;
     initPoint.col = mx/SIZE_OF_CELL;
+    /*
+        OPENCV坐标系
+        ----------------> X轴
+        |
+        |
+        |
+        |
+        \/ Y轴
 
 
-    currentPoint = initPoint;
+        ^ Y轴
+        |
+        |
+        |
+        |
+        --------------> X轴
+    */
+
+    currentPoint = initPoint; //当前初始点位为：初始坐标值(cell坐标系)，角度为90
     pathVec_.clear();
-    pathVec_.push_back(initPoint);
+    pathVec_.push_back(initPoint); //将初始点位压入栈中
 
-    float initTheta = initPoint.theta; //initial orientation
+    float initTheta = initPoint.theta;
+    /*
+    c_0权重值、e角度差（被映射至0～1）、v活力值、deltaTheta角度差
+    */
     const float c_0 = 0.001;
     float e = 0.0, v = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
-    vector<float> thetaVec = {0, 45,90,135,180,225,270,315};
+    vector<float> thetaVec = {0, 45, 90, 135, 180, 225, 270, 315};
 
-    //the main planning loop
-    while(freeSpaceVec_.size()>0)
+    while(freeSpaceVec_.size()>0) //当没有空闲区域时，退出循环
     {
-        //erase current point from free space first.
         vector<cellIndex>::iterator it;
-        for(it=freeSpaceVec_.begin();it!=freeSpaceVec_.end();)
+        for(it=freeSpaceVec_.begin(); it!=freeSpaceVec_.end();)
         {
             if((*it).row==nextPoint.row && (*it).col==nextPoint.col)
-            {it = freeSpaceVec_.erase(it);continue;}
+            {
+                it = freeSpaceVec_.erase(it); //从空闲栅格存储数组中移除当前点
+                continue;
+            }
             it++;
         }
 
-        //compute neiborhood's activities
+        //计算周围活力值
         int maxIndex = 0;
         float max_v = -3;
-        neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col) = -2.0;
+        neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col) = -2.0; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
+                                                                             //答：此处赋值是为标识该处已经被遍历
         for(int id = 0; id < 8; id++)
         {
             deltaTheta = max(thetaVec[id],lasttheta)-min(thetaVec[id],lasttheta);
-            if(deltaTheta>180) deltaTheta=360-deltaTheta;
+            if(deltaTheta>180) deltaTheta = 360 - deltaTheta;
             e = 1 - abs(deltaTheta) / 180;
-            switch (id)
+            switch(id)
             {
                 case 0:
                     if(currentPoint.col==neuralizedMat_.cols-1){v=-2;break;}
@@ -324,7 +360,7 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         }
 
 
-        if(max_v <= 0)
+        if(max_v <= 0) //如果周围的活力值都小于0，即周围无空闲区域或为已覆盖区域，则寻找欧式距离最近的空闲栅格
         {
             float dist = 0.0, min_dist = 100000;
             //vector<cellIndex>::iterator min_iter;
@@ -342,12 +378,14 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
                 }
                 ii++;
             }
-            if(min_dist==0 || min_index == -1)
-            {break;}
+            if(min_dist == 0 || min_index == -1)
+            {
+                break;
+            }
             else
             {
-                cout << "next point index: "<<min_index<< endl;
-                cout << "distance: "<<min_dist << endl;
+                cout << "[max_v < 0] next point index: "<< min_index << endl;
+                cout << "[max_v < 0] distance: "<< min_dist << endl;
                 nextPoint = freeSpaceVec_[min_index];
                 currentPoint = nextPoint;
                 pathVec_.push_back(nextPoint);
@@ -357,42 +395,42 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         }
 
         //next point.
-        switch (maxIndex)
+        switch (maxIndex) //根据活力值最大值方向选取下一点
         {
-        case 0:
-            nextPoint.row = currentPoint.row;
-            nextPoint.col = currentPoint.col+1;
-            break;
-        case 1:
-            nextPoint.row = currentPoint.row-1;
-            nextPoint.col = currentPoint.col+1;
-            break;
-        case 2:
-            nextPoint.row = currentPoint.row-1;
-            nextPoint.col = currentPoint.col;
-            break;
-        case 3:
-            nextPoint.row = currentPoint.row-1;
-            nextPoint.col = currentPoint.col-1;
-            break;
-        case 4:
-            nextPoint.row = currentPoint.row;
-            nextPoint.col = currentPoint.col-1;
-            break;
-        case 5:
-            nextPoint.row = currentPoint.row+1;
-            nextPoint.col = currentPoint.col-1;
-            break;
-        case 6:
-            nextPoint.row = currentPoint.row+1;
-            nextPoint.col = currentPoint.col;
-            break;
-        case 7:
-            nextPoint.row = currentPoint.row+1;
-            nextPoint.col = currentPoint.col+1;
-            break;
-        default:
-            break;
+            case 0:
+                nextPoint.row = currentPoint.row;
+                nextPoint.col = currentPoint.col+1;
+                break;
+            case 1:
+                nextPoint.row = currentPoint.row-1;
+                nextPoint.col = currentPoint.col+1;
+                break;
+            case 2:
+                nextPoint.row = currentPoint.row-1;
+                nextPoint.col = currentPoint.col;
+                break;
+            case 3:
+                nextPoint.row = currentPoint.row-1;
+                nextPoint.col = currentPoint.col-1;
+                break;
+            case 4:
+                nextPoint.row = currentPoint.row;
+                nextPoint.col = currentPoint.col-1;
+                break;
+            case 5:
+                nextPoint.row = currentPoint.row+1;
+                nextPoint.col = currentPoint.col-1;
+                break;
+            case 6:
+                nextPoint.row = currentPoint.row+1;
+                nextPoint.col = currentPoint.col;
+                break;
+            case 7:
+                nextPoint.row = currentPoint.row+1;
+                nextPoint.col = currentPoint.col+1;
+                break;
+            default:
+                break;
         }
         nextPoint.theta = thetaVec[maxIndex];
         currentPoint = nextPoint;
