@@ -238,235 +238,30 @@ vector<cellIndex> MowerPathPlanning::GetPathInCV()
     return this->pathVec_;
 }
 
-// void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经网络算法
-// {
-//     cellIndex initPoint,nextPoint, currentPoint;
-    
-//     initPoint.theta = 90; //初始化姿态角度
-//     if(!costmap2d_ros_->getRobotPose(initPose_)) //获得初始地图坐标系，注意该位置是相对世界坐标系
-//     {
-//         ROS_INFO("[mainPlanningLoop] Failed to get robot location!");
-//         return;
-//     }
-    
-//     unsigned int mx,my; //地图x、y坐标
-//     double wx = initPose_.pose.position.x;
-//     double wy = initPose_.pose.position.y;
-
-//     bool getmapcoor = costmap2d_->worldToMap(wx, wy, mx, my); //将世界坐标系下的坐标转换为地图坐标系下的坐标
-//     if(!getmapcoor)
-//     {
-//         ROS_INFO("[mainPlanningLoop] Failed to get robot location in map!");
-//         return;
-//     }
-//     /* 将ROS坐标系转换为OEPNCV坐标系 */
-//     initPoint.row = cellMat_.rows - my/SIZE_OF_CELL - 1;
-//     initPoint.col = mx/SIZE_OF_CELL;
-//     /*
-//         OPENCV坐标系
-//         ----------------> X轴
-//         |
-//         |
-//         |
-//         |
-//         \/ Y轴
-
-
-//         ^ Y轴
-//         |
-//         |
-//         |
-//         |
-//         --------------> X轴
-//     */
-
-//     currentPoint = initPoint; //当前初始点位为：初始坐标值(cell坐标系)，角度为90
-//     pathVec_.clear();
-//     pathVec_.push_back(initPoint); //将初始点位压入栈中
-
-//     float initTheta = initPoint.theta;
-//     /*
-//     c_0权重值、e角度差（被映射至0～1）、v活力值、deltaTheta角度差
-//     */
-//     const float c_0 = 0.001;
-//     float e = 0.0, v = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
-//     vector<float> thetaVec = {0, 45, 90, 135, 180, 225, 270, 315};
-
-//     while(freeSpaceVec_.size()>0) //当没有空闲区域时，退出循环
-//     {
-//         vector<cellIndex>::iterator it;
-//         for(it=freeSpaceVec_.begin(); it!=freeSpaceVec_.end();)
-//         {
-//             if((*it).row==nextPoint.row && (*it).col==nextPoint.col)
-//             {
-//                 it = freeSpaceVec_.erase(it); //从空闲栅格存储数组中移除当前点
-//                 continue;
-//             }
-//             it++;
-//         }
-
-//         //计算周围活力值
-//         int maxIndex = 0;
-//         float max_v = -3;
-//         neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col) = -2.0; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
-//                                                                              //答：此处赋值是为标识该处已经被遍历
-//         for(int id = 0; id < 8; id++)
-//         {
-//             deltaTheta = max(thetaVec[id],lasttheta)-min(thetaVec[id],lasttheta);
-//             if(deltaTheta>180) deltaTheta = 360 - deltaTheta;
-//             e = 1 - abs(deltaTheta) / 180;
-//             switch(id)
-//             {
-//                 case 0:
-//                     if(currentPoint.col==neuralizedMat_.cols-1){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col+1) + c_0 * e;
-//                     break;
-//                 case 1:
-//                 if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == 0){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col+1) + c_0 * e;
-//                     break;
-//                 case 2:
-//                 if(currentPoint.row == 0){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col) + c_0 * e;
-//                     break;
-//                 case 3:
-//                 if(currentPoint.col== 0 || currentPoint.row == 0){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col-1) + c_0 * e;
-//                     break;
-//                 case 4:
-//                 if(currentPoint.col== 0){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col-1) + c_0 * e;
-//                     break;
-//                 case 5:
-//                 if(currentPoint.col== 0 || currentPoint.row == neuralizedMat_.rows-1){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col-1) + c_0 * e;
-//                     break;
-//                 case 6:
-//                 if(currentPoint.row == neuralizedMat_.rows-1){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col) + c_0 * e;
-//                     break;
-//                 case 7:
-//                 if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == neuralizedMat_.rows-1){v=-2;break;}
-//                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col+1) + c_0 * e;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//             if(v > max_v)
-//             {
-//                 max_v = v;
-//                 maxIndex=id;
-//             }
-//         }
-
-
-//         if(max_v <= 0) //如果周围的活力值都小于0，即周围无空闲区域或为已覆盖区域，则寻找欧式距离最近的空闲栅格
-//         {
-//             float dist = 0.0, min_dist = 100000;
-//             //vector<cellIndex>::iterator min_iter;
-//             int ii=0, min_index=-1;
-//             for(it=freeSpaceVec_.begin();it!=freeSpaceVec_.end();it++)
-//             {
-//                 if(neuralizedMat_.at<float>((*it).row,(*it).col) > 0)
-//                 {
-//                     dist = sqrt((currentPoint.row-(*it).row)*(currentPoint.row-(*it).row)+(currentPoint.col-(*it).col)*(currentPoint.col-(*it).col));
-//                     if(dist < min_dist)
-//                     {
-//                         min_dist = dist;
-//                         min_index = ii;
-//                     }
-//                 }
-//                 ii++;
-//             }
-//             if(min_dist == 0 || min_index == -1)
-//             {
-//                 break;
-//             }
-//             else
-//             {
-//                 cout << "[max_v < 0] next point index: "<< min_index << endl;
-//                 cout << "[max_v < 0] distance: "<< min_dist << endl;
-//                 nextPoint = freeSpaceVec_[min_index];
-//                 currentPoint = nextPoint;
-//                 pathVec_.push_back(nextPoint);
-
-//                 continue;
-//             }
-//         }
-
-//         //next point.
-//         switch (maxIndex) //根据活力值最大值方向选取下一点
-//         {
-//             case 0:
-//                 nextPoint.row = currentPoint.row;
-//                 nextPoint.col = currentPoint.col+1;
-//                 break;
-//             case 1:
-//                 nextPoint.row = currentPoint.row-1;
-//                 nextPoint.col = currentPoint.col+1;
-//                 break;
-//             case 2:
-//                 nextPoint.row = currentPoint.row-1;
-//                 nextPoint.col = currentPoint.col;
-//                 break;
-//             case 3:
-//                 nextPoint.row = currentPoint.row-1;
-//                 nextPoint.col = currentPoint.col-1;
-//                 break;
-//             case 4:
-//                 nextPoint.row = currentPoint.row;
-//                 nextPoint.col = currentPoint.col-1;
-//                 break;
-//             case 5:
-//                 nextPoint.row = currentPoint.row+1;
-//                 nextPoint.col = currentPoint.col-1;
-//                 break;
-//             case 6:
-//                 nextPoint.row = currentPoint.row+1;
-//                 nextPoint.col = currentPoint.col;
-//                 break;
-//             case 7:
-//                 nextPoint.row = currentPoint.row+1;
-//                 nextPoint.col = currentPoint.col+1;
-//                 break;
-//             default:
-//                 break;
-//         }
-//         nextPoint.theta = thetaVec[maxIndex];
-//         currentPoint = nextPoint;
-//         pathVec_.push_back(nextPoint);
-//     }
-
-//     Mat resultMat = Mat(srcMap_.rows,srcMap_.cols, CV_8UC3);
-//     writeResult(resultMat,pathVec_);    
-// }
-
-void MowerPathPlanning::mainPlanningLoop()
+void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经网络算法
 {
-    cellIndex initPoint, nextPoint, currentPoint;
-
-    initPoint.theta = 90;
-    bool isok = costmap2d_ros_->getRobotPose(initPose_);
-    if (!isok)
+    cellIndex initPoint,nextPoint, currentPoint;
+    
+    initPoint.theta = 90; //初始化姿态角度
+    if(!costmap2d_ros_->getRobotPose(initPose_)) //获得初始地图坐标系，注意该位置是相对世界坐标系
     {
         ROS_INFO("[mainPlanningLoop] Failed to get robot location!");
         return;
     }
     
-    unsigned int mx, my;
+    unsigned int mx,my; //地图x、y坐标
     double wx = initPose_.pose.position.x;
     double wy = initPose_.pose.position.y;
 
-    bool getmapcoor = costmap2d_->worldToMap(wx, wy, mx, my); //获得初始地图坐标系，注意该位置是相对世界坐标系
-    if (!getmapcoor)
+    bool getmapcoor = costmap2d_->worldToMap(wx, wy, mx, my); //将世界坐标系下的坐标转换为地图坐标系下的坐标
+    if(!getmapcoor)
     {
         ROS_INFO("[mainPlanningLoop] Failed to get robot location in map!");
         return;
     }
-        
     /* 将ROS坐标系转换为OEPNCV坐标系 */
-    initPoint.row = cellMat_.rows - my / SIZE_OF_CELL - 1;
-    initPoint.col = mx / SIZE_OF_CELL;
+    initPoint.row = cellMat_.rows - my/SIZE_OF_CELL - 1;
+    initPoint.col = mx/SIZE_OF_CELL;
     /*
         OPENCV坐标系
         ----------------> X轴
@@ -485,137 +280,92 @@ void MowerPathPlanning::mainPlanningLoop()
         --------------> X轴
     */
 
-    currentPoint = initPoint;
+    currentPoint = initPoint; //当前初始点位为：初始坐标值(cell坐标系)，角度为90
     pathVec_.clear();
-    pathVec_.push_back(initPoint);
+    pathVec_.push_back(initPoint); //将初始点位压入栈中
 
     float initTheta = initPoint.theta;
-    const float c_0 = 50;             //c_0:作为角度差值的权重
-    float e = 0.0, v = 0.0, v_1 = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
-    int fx;
+    /*
+    c_0权重值、e角度差（被映射至0～1）、v活力值、deltaTheta角度差
+    */
+    const float c_0 = 50; //0.001
+    float e = 0.0, v = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
     vector<float> thetaVec = {0, 45, 90, 135, 180, 225, 270, 315};
 
-    while(freeSpaceVec_.size()>0) //循环遍历每一个空闲栅格区域
-    // for (int loop = 0; loop < 9000; loop++) //如果地图较大，需将loop最大值增大
+    while(freeSpaceVec_.size()>0) //当没有空闲区域时，退出循环
     {
         vector<cellIndex>::iterator it;
-
-        for(it = freeSpaceVec_.begin(); it != freeSpaceVec_.end();)
+        for(it=freeSpaceVec_.begin(); it!=freeSpaceVec_.end();)
         {
-            if((*it).row == nextPoint.row && (*it).col == nextPoint.col)
+            if((*it).row==nextPoint.row && (*it).col==nextPoint.col)
             {
-                it = freeSpaceVec_.erase(it); //擦除当前点，nextPoint为当前点，尚未赋值
+                it = freeSpaceVec_.erase(it); //从空闲栅格存储数组中移除当前点
                 continue;
             }
             it++;
         }
 
+        //计算周围活力值
         int maxIndex = 0;
         float max_v = -300;
-        neuralizedMat_.at<float>(currentPoint.row, currentPoint.col) = -250.0;
-        lasttheta = currentPoint.theta;
-        for (int id = 0; id < 8; id++)
+        neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col) = -250; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
+                                                                             //答：此处赋值是为标识该处已经被遍历
+        for(int id = 0; id < 8; id++)
         {
-            deltaTheta = max(thetaVec[id], lasttheta) - min(thetaVec[id], lasttheta);
-            if (deltaTheta > 180)
-                deltaTheta = 360 - deltaTheta;
-            e = 1 - abs(deltaTheta) / 180; //e:将角度差映射到0～1之间
-            switch (id)
+            deltaTheta = max(thetaVec[id],lasttheta)-min(thetaVec[id],lasttheta);
+            if(deltaTheta>180) deltaTheta = 360 - deltaTheta;
+            e = 1 - abs(deltaTheta) / 180;
+            switch(id)
             {
                 case 0:
-                    if (currentPoint.col == neuralizedMat_.cols - 1)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row, currentPoint.col + 1) + c_0 * e;
-
+                    if(currentPoint.col==neuralizedMat_.cols-1){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col+1) + c_0 * e;
                     break;
                 case 1:
-                    if (currentPoint.col == neuralizedMat_.cols - 1 || currentPoint.row == 0)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col + 1) + c_0 * e - 200;
-
+                if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == 0){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col+1) + c_0 * e - 200;
                     break;
                 case 2:
-                    if (currentPoint.row == 0)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col) + c_0 * e;
-
+                if(currentPoint.row == 0){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col) + c_0 * e;
                     break;
                 case 3:
-                    if (currentPoint.col == 0 || currentPoint.row == 0)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col - 1) + c_0 * e - 200;
-
+                if(currentPoint.col== 0 || currentPoint.row == 0){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col-1) + c_0 * e - 200;
                     break;
                 case 4:
-                    if (currentPoint.col == 0)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row, currentPoint.col - 1) + c_0 * e;
-
+                if(currentPoint.col== 0){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col-1) + c_0 * e;
                     break;
                 case 5:
-                    if (currentPoint.col == 0 || currentPoint.row == neuralizedMat_.rows - 1)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col - 1) + c_0 * e - 200;
-
+                if(currentPoint.col== 0 || currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col-1) + c_0 * e - 200;
                     break;
                 case 6:
-                    if (currentPoint.row == neuralizedMat_.rows - 1)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col) + c_0 * e;
-
+                if(currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col) + c_0 * e;
                     break;
                 case 7:
-                    if (currentPoint.col == neuralizedMat_.cols - 1 || currentPoint.row == neuralizedMat_.rows - 1)
-                    {
-                        v = -100000;
-                        break;
-                    }
-                    v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col + 1) + c_0 * e - 200;
-
+                if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col+1) + c_0 * e - 200;
                     break;
                 default:
                     break;
             }
-            if (v > max_v)
+            if(v > max_v)
             {
                 max_v = v;
-                maxIndex = id;
-            }
-
-            if (v == max_v && id > maxIndex)
-            {
-                max_v = v;
-                maxIndex = id;
+                maxIndex=id;
             }
         }
 
-        if (max_v <= 0)
+
+        if(max_v <= 0) //如果周围的活力值都小于0，即周围无空闲区域或为已覆盖区域，则寻找欧式距离最近的空闲栅格
         {
-            float dist = 0.0, min_dist = 100000000;
+            float dist = 0.0, min_dist = 100000;
             //vector<cellIndex>::iterator min_iter;
-            int ii = 0, min_index = -1;
-            for (it = freeSpaceVec_.begin(); it != freeSpaceVec_.end(); it++)
+            int ii=0, min_index=-1;
+            for(it=freeSpaceVec_.begin();it!=freeSpaceVec_.end();it++)
             {
                 if (neuralizedMat_.at<float>((*it).row, (*it).col) > 0)
                 {
@@ -631,61 +381,56 @@ void MowerPathPlanning::mainPlanningLoop()
                 }
                 ii++;
             }
-            //if(min_dist==0 || min_index == -1)
-            //{break;}
-            //else
-            if (min_index != -1 && min_dist != 100000000)
+            if(min_dist == 0 || min_index == -1)
             {
-                cout << "next point index: " << min_index << endl;
-                cout << "distance: " << min_dist << endl;
+                break;
+            }
+            else
+            {
+                cout << "[max_v < 0] next point index: "<< min_index << endl;
+                cout << "[max_v < 0] distance: "<< min_dist << endl;
                 nextPoint = freeSpaceVec_[min_index];
                 currentPoint = nextPoint;
                 pathVec_.push_back(nextPoint);
 
                 continue;
             }
-            else //产生了自锁现象
-            {
-                ROS_INFO("The program has been dead because of the self-locking");
-                ROS_INFO("The program has gone through %ld steps", pathVec_.size());
-                break;
-            }
         }
 
-        //next point
+        //next point.
         switch (maxIndex) //根据活力值最大值方向选取下一点
         {
             case 0:
                 nextPoint.row = currentPoint.row;
-                nextPoint.col = currentPoint.col + 1;
+                nextPoint.col = currentPoint.col+1;
                 break;
             case 1:
-                nextPoint.row = currentPoint.row - 1;
-                nextPoint.col = currentPoint.col + 1;
+                nextPoint.row = currentPoint.row-1;
+                nextPoint.col = currentPoint.col+1;
                 break;
             case 2:
-                nextPoint.row = currentPoint.row - 1;
+                nextPoint.row = currentPoint.row-1;
                 nextPoint.col = currentPoint.col;
                 break;
             case 3:
-                nextPoint.row = currentPoint.row - 1;
-                nextPoint.col = currentPoint.col - 1;
+                nextPoint.row = currentPoint.row-1;
+                nextPoint.col = currentPoint.col-1;
                 break;
             case 4:
                 nextPoint.row = currentPoint.row;
-                nextPoint.col = currentPoint.col - 1;
+                nextPoint.col = currentPoint.col-1;
                 break;
             case 5:
-                nextPoint.row = currentPoint.row + 1;
-                nextPoint.col = currentPoint.col - 1;
+                nextPoint.row = currentPoint.row+1;
+                nextPoint.col = currentPoint.col-1;
                 break;
             case 6:
-                nextPoint.row = currentPoint.row + 1;
+                nextPoint.row = currentPoint.row+1;
                 nextPoint.col = currentPoint.col;
                 break;
             case 7:
-                nextPoint.row = currentPoint.row + 1;
-                nextPoint.col = currentPoint.col + 1;
+                nextPoint.row = currentPoint.row+1;
+                nextPoint.col = currentPoint.col+1;
                 break;
             default:
                 break;
@@ -693,13 +438,271 @@ void MowerPathPlanning::mainPlanningLoop()
         nextPoint.theta = thetaVec[maxIndex];
         currentPoint = nextPoint;
         pathVec_.push_back(nextPoint);
-
     }
-    
-    /* 可视化 */
-    // Mat resultMat = Mat(srcMap_.rows, srcMap_.cols, CV_8UC3);
-    // writeResult(resultMat, pathVec_);
+
+    // Mat resultMat = Mat(srcMap_.rows,srcMap_.cols, CV_8UC3);
+    // writeResult(resultMat,pathVec_);    
 }
+
+// void MowerPathPlanning::mainPlanningLoop()
+// {
+//     cellIndex initPoint, nextPoint, currentPoint;
+
+//     initPoint.theta = 90;
+//     bool isok = costmap2d_ros_->getRobotPose(initPose_);
+//     if (!isok)
+//     {
+//         ROS_INFO("[mainPlanningLoop] Failed to get robot location!");
+//         return;
+//     }
+    
+//     unsigned int mx, my;
+//     double wx = initPose_.pose.position.x;
+//     double wy = initPose_.pose.position.y;
+
+//     bool getmapcoor = costmap2d_->worldToMap(wx, wy, mx, my); //获得初始地图坐标系，注意该位置是相对世界坐标系
+//     if (!getmapcoor)
+//     {
+//         ROS_INFO("[mainPlanningLoop] Failed to get robot location in map!");
+//         return;
+//     }
+        
+//     /* 将ROS坐标系转换为OEPNCV坐标系 */
+//     initPoint.row = cellMat_.rows - my / SIZE_OF_CELL - 1;
+//     initPoint.col = mx / SIZE_OF_CELL;
+//     /*
+//         OPENCV坐标系
+//         ----------------> X轴
+//         |
+//         |
+//         |
+//         |
+//         \/ Y轴
+
+
+//         ^ Y轴
+//         |
+//         |
+//         |
+//         |
+//         --------------> X轴
+//     */
+
+//     currentPoint = initPoint;
+//     pathVec_.clear();
+//     pathVec_.push_back(initPoint);
+
+//     float initTheta = initPoint.theta;
+//     const float c_0 = 50;             //c_0:作为角度差值的权重
+//     float e = 0.0, v = 0.0, v_1 = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
+//     int fx;
+//     vector<float> thetaVec = {0, 45, 90, 135, 180, 225, 270, 315};
+
+//     while(freeSpaceVec_.size()>0) //循环遍历每一个空闲栅格区域
+//     // for (int loop = 0; loop < 9000; loop++) //如果地图较大，需将loop最大值增大
+//     {
+//         vector<cellIndex>::iterator it;
+
+//         for(it = freeSpaceVec_.begin(); it != freeSpaceVec_.end();)
+//         {
+//             if((*it).row == nextPoint.row && (*it).col == nextPoint.col)
+//             {
+//                 it = freeSpaceVec_.erase(it); //擦除当前点，nextPoint为当前点，尚未赋值
+//                 continue;
+//             }
+//             it++;
+//         }
+
+//         int maxIndex = 0;
+//         float max_v = -300;
+//         neuralizedMat_.at<float>(currentPoint.row, currentPoint.col) = -250.0;
+//         lasttheta = currentPoint.theta;
+//         for (int id = 0; id < 8; id++)
+//         {
+//             deltaTheta = max(thetaVec[id], lasttheta) - min(thetaVec[id], lasttheta);
+//             if (deltaTheta > 180)
+//                 deltaTheta = 360 - deltaTheta;
+//             e = 1 - abs(deltaTheta) / 180; //e:将角度差映射到0～1之间
+//             switch (id)
+//             {
+//                 case 0:
+//                     if (currentPoint.col == neuralizedMat_.cols - 1)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row, currentPoint.col + 1) + c_0 * e;
+
+//                     break;
+//                 case 1:
+//                     if (currentPoint.col == neuralizedMat_.cols - 1 || currentPoint.row == 0)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col + 1) + c_0 * e - 200;
+
+//                     break;
+//                 case 2:
+//                     if (currentPoint.row == 0)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col) + c_0 * e;
+
+//                     break;
+//                 case 3:
+//                     if (currentPoint.col == 0 || currentPoint.row == 0)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row - 1, currentPoint.col - 1) + c_0 * e - 200;
+
+//                     break;
+//                 case 4:
+//                     if (currentPoint.col == 0)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row, currentPoint.col - 1) + c_0 * e;
+
+//                     break;
+//                 case 5:
+//                     if (currentPoint.col == 0 || currentPoint.row == neuralizedMat_.rows - 1)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col - 1) + c_0 * e - 200;
+
+//                     break;
+//                 case 6:
+//                     if (currentPoint.row == neuralizedMat_.rows - 1)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col) + c_0 * e;
+
+//                     break;
+//                 case 7:
+//                     if (currentPoint.col == neuralizedMat_.cols - 1 || currentPoint.row == neuralizedMat_.rows - 1)
+//                     {
+//                         v = -100000;
+//                         break;
+//                     }
+//                     v = neuralizedMat_.at<float>(currentPoint.row + 1, currentPoint.col + 1) + c_0 * e - 200;
+
+//                     break;
+//                 default:
+//                     break;
+//             }
+//             if (v > max_v)
+//             {
+//                 max_v = v;
+//                 maxIndex = id;
+//             }
+
+//             if (v == max_v && id > maxIndex)
+//             {
+//                 max_v = v;
+//                 maxIndex = id;
+//             }
+//         }
+
+//         if (max_v <= 0)
+//         {
+//             float dist = 0.0, min_dist = 100000000;
+//             //vector<cellIndex>::iterator min_iter;
+//             int ii = 0, min_index = -1;
+//             for (it = freeSpaceVec_.begin(); it != freeSpaceVec_.end(); it++)
+//             {
+//                 if (neuralizedMat_.at<float>((*it).row, (*it).col) > 0)
+//                 {
+//                     if (Boundingjudge((*it).row, (*it).col)) //改进方法可见论文算法改进方法，沿障碍物寻找空闲点后，得到的目标点的行走距离最小，而并非欧式距离最近的点
+//                     {
+//                         dist = sqrt((currentPoint.row - (*it).row) * (currentPoint.row - (*it).row) + (currentPoint.col - (*it).col) * (currentPoint.col - (*it).col));
+//                         if (dist < min_dist)
+//                         {
+//                             min_dist = dist;
+//                             min_index = ii;
+//                         }
+//                     }
+//                 }
+//                 ii++;
+//             }
+//             //if(min_dist==0 || min_index == -1)
+//             //{break;}
+//             //else
+//             if (min_index != -1 && min_dist != 100000000)
+//             {
+//                 cout << "next point index: " << min_index << endl;
+//                 cout << "distance: " << min_dist << endl;
+//                 nextPoint = freeSpaceVec_[min_index];
+//                 currentPoint = nextPoint;
+//                 pathVec_.push_back(nextPoint);
+
+//                 continue;
+//             }
+//             else //产生了自锁现象
+//             {
+//                 ROS_INFO("The program has been dead because of the self-locking");
+//                 ROS_INFO("The program has gone through %ld steps", pathVec_.size());
+//                 break;
+//             }
+//         }
+
+//         //next point
+//         switch (maxIndex) //根据活力值最大值方向选取下一点
+//         {
+//             case 0:
+//                 nextPoint.row = currentPoint.row;
+//                 nextPoint.col = currentPoint.col + 1;
+//                 break;
+//             case 1:
+//                 nextPoint.row = currentPoint.row - 1;
+//                 nextPoint.col = currentPoint.col + 1;
+//                 break;
+//             case 2:
+//                 nextPoint.row = currentPoint.row - 1;
+//                 nextPoint.col = currentPoint.col;
+//                 break;
+//             case 3:
+//                 nextPoint.row = currentPoint.row - 1;
+//                 nextPoint.col = currentPoint.col - 1;
+//                 break;
+//             case 4:
+//                 nextPoint.row = currentPoint.row;
+//                 nextPoint.col = currentPoint.col - 1;
+//                 break;
+//             case 5:
+//                 nextPoint.row = currentPoint.row + 1;
+//                 nextPoint.col = currentPoint.col - 1;
+//                 break;
+//             case 6:
+//                 nextPoint.row = currentPoint.row + 1;
+//                 nextPoint.col = currentPoint.col;
+//                 break;
+//             case 7:
+//                 nextPoint.row = currentPoint.row + 1;
+//                 nextPoint.col = currentPoint.col + 1;
+//                 break;
+//             default:
+//                 break;
+//         }
+//         nextPoint.theta = thetaVec[maxIndex];
+//         currentPoint = nextPoint;
+//         pathVec_.push_back(nextPoint);
+
+//     }
+    
+//     /* 可视化 */
+//     // Mat resultMat = Mat(srcMap_.rows, srcMap_.cols, CV_8UC3);
+//     // writeResult(resultMat, pathVec_);
+// }
 
 bool MowerPathPlanning::Boundingjudge(int a, int b)
 {
