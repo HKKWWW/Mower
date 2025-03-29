@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 
+#include <ros/ros.h>
 #include "tf/tf.h"
 #include "tf/transform_listener.h"
 #include <costmap_2d/costmap_2d.h>

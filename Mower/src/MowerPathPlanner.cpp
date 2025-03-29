@@ -53,10 +53,10 @@ MowerPathPlanning::MowerPathPlanning(costmap_2d::Costmap2DROS *costmap2d_ros) //
 
     initializeMats();
     // initializeCoveredGrid();
-
-    imshow("debugMapImage",srcMap_);
-    imshow("debugCellMatImage",cellMat_);
-    waitKey(0);
+    ros::Duration(1).sleep();
+    // imshow("debugMapImage",srcMap_);
+    // imshow("debugCellMatImage",cellMat_);
+    // waitKey(0);
     //imwrite("debug_srcmap.jpg",srcMap_);
 
     if (!srcMap_.empty())
@@ -249,7 +249,7 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         return;
     }
     
-    unsigned int mx,my; //地图x、y坐标
+    unsigned int mx, my; //地图x、y坐标
     double wx = initPose_.pose.position.x;
     double wy = initPose_.pose.position.y;
 
@@ -260,7 +260,7 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         return;
     }
     /* 将ROS坐标系转换为OEPNCV坐标系 */
-    initPoint.row = cellMat_.rows - my/SIZE_OF_CELL - 1;
+    initPoint.row = cellMat_.rows - my / SIZE_OF_CELL - 1;
     initPoint.col = mx/SIZE_OF_CELL;
     /*
         OPENCV坐标系
@@ -288,16 +288,16 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
     /*
     c_0权重值、e角度差（被映射至0～1）、v活力值、deltaTheta角度差
     */
-    const float c_0 = 50; //0.001
+    const float c_0 = 50; //原为0.001
     float e = 0.0, v = 0.0, deltaTheta = 0.0, lasttheta = initTheta, PI = 3.14159;
     vector<float> thetaVec = {0, 45, 90, 135, 180, 225, 270, 315};
 
-    while(freeSpaceVec_.size()>0) //当没有空闲区域时，退出循环
+    while(freeSpaceVec_.size() > 0) //当没有空闲区域时，退出循环
     {
         vector<cellIndex>::iterator it;
-        for(it=freeSpaceVec_.begin(); it!=freeSpaceVec_.end();)
+        for(it = freeSpaceVec_.begin(); it != freeSpaceVec_.end();)
         {
-            if((*it).row==nextPoint.row && (*it).col==nextPoint.col)
+            if((*it).row == nextPoint.row && (*it).col == nextPoint.col)
             {
                 it = freeSpaceVec_.erase(it); //从空闲栅格存储数组中移除当前点
                 continue;
@@ -308,50 +308,91 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         //计算周围活力值
         int maxIndex = 0;
         float max_v = -300;
-        neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col) = -250; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
+        neuralizedMat_.at<float>(currentPoint.row, currentPoint.col) = -250; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
                                                                              //答：此处赋值是为标识该处已经被遍历
         for(int id = 0; id < 8; id++)
         {
-            deltaTheta = max(thetaVec[id],lasttheta)-min(thetaVec[id],lasttheta);
-            if(deltaTheta>180) deltaTheta = 360 - deltaTheta;
+            deltaTheta = max(thetaVec[id], lasttheta) - min(thetaVec[id], lasttheta);
+            if(deltaTheta > 180) deltaTheta = 360 - deltaTheta;
             e = 1 - abs(deltaTheta) / 180;
             switch(id)
             {
                 case 0:
-                    if(currentPoint.col==neuralizedMat_.cols-1){v=-100000.0;break;}
+                    if(currentPoint.col==neuralizedMat_.cols-1)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col+1) + c_0 * e;
                     break;
+
                 case 1:
-                if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == 0){v=-100000.0;break;}
+                    if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == 0)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col+1) + c_0 * e - 200;
                     break;
+
                 case 2:
-                if(currentPoint.row == 0){v=-100000.0;break;}
+                    if(currentPoint.row == 0)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col) + c_0 * e;
                     break;
+
                 case 3:
-                if(currentPoint.col== 0 || currentPoint.row == 0){v=-100000.0;break;}
+                    if(currentPoint.col== 0 || currentPoint.row == 0)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row-1 ,currentPoint.col-1) + c_0 * e - 200;
                     break;
+
                 case 4:
-                if(currentPoint.col== 0){v=-100000.0;break;}
+                    if(currentPoint.col== 0)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row ,currentPoint.col-1) + c_0 * e;
                     break;
+
                 case 5:
-                if(currentPoint.col== 0 || currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    if(currentPoint.col== 0 || currentPoint.row == neuralizedMat_.rows-1)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col-1) + c_0 * e - 200;
                     break;
+
                 case 6:
-                if(currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    if(currentPoint.row == neuralizedMat_.rows-1)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col) + c_0 * e;
                     break;
+
                 case 7:
-                if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == neuralizedMat_.rows-1){v=-100000.0;break;}
+                    if(currentPoint.col==neuralizedMat_.cols-1 || currentPoint.row == neuralizedMat_.rows-1)
+                    {
+                        v=-100000.0;
+                        break;
+                    }
                     v = neuralizedMat_.at<float>(currentPoint.row+1 ,currentPoint.col+1) + c_0 * e - 200;
                     break;
+                    
                 default:
                     break;
             }
+
             if(v > max_v)
             {
                 max_v = v;
@@ -362,10 +403,10 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
 
         if(max_v <= 0) //如果周围的活力值都小于0，即周围无空闲区域或为已覆盖区域，则寻找欧式距离最近的空闲栅格
         {
-            float dist = 0.0, min_dist = 100000;
+            float dist = 0.0, min_dist = 1000000;
             //vector<cellIndex>::iterator min_iter;
-            int ii=0, min_index=-1;
-            for(it=freeSpaceVec_.begin();it!=freeSpaceVec_.end();it++)
+            int ii = 0, min_index = -1;
+            for(it = freeSpaceVec_.begin(); it != freeSpaceVec_.end(); it++)
             {
                 if (neuralizedMat_.at<float>((*it).row, (*it).col) > 0)
                 {
@@ -381,7 +422,7 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
                 }
                 ii++;
             }
-            if(min_dist == 0 || min_index == -1)
+            if(min_dist == 1000000 || min_index == -1)
             {
                 break;
             }
@@ -402,35 +443,35 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         {
             case 0:
                 nextPoint.row = currentPoint.row;
-                nextPoint.col = currentPoint.col+1;
+                nextPoint.col = currentPoint.col + 1;
                 break;
             case 1:
-                nextPoint.row = currentPoint.row-1;
-                nextPoint.col = currentPoint.col+1;
+                nextPoint.row = currentPoint.row - 1;
+                nextPoint.col = currentPoint.col + 1;
                 break;
             case 2:
-                nextPoint.row = currentPoint.row-1;
+                nextPoint.row = currentPoint.row - 1;
                 nextPoint.col = currentPoint.col;
                 break;
             case 3:
-                nextPoint.row = currentPoint.row-1;
-                nextPoint.col = currentPoint.col-1;
+                nextPoint.row = currentPoint.row - 1;
+                nextPoint.col = currentPoint.col - 1;
                 break;
             case 4:
                 nextPoint.row = currentPoint.row;
-                nextPoint.col = currentPoint.col-1;
+                nextPoint.col = currentPoint.col - 1;
                 break;
             case 5:
-                nextPoint.row = currentPoint.row+1;
-                nextPoint.col = currentPoint.col-1;
+                nextPoint.row = currentPoint.row + 1;
+                nextPoint.col = currentPoint.col - 1;
                 break;
             case 6:
-                nextPoint.row = currentPoint.row+1;
+                nextPoint.row = currentPoint.row + 1;
                 nextPoint.col = currentPoint.col;
                 break;
             case 7:
-                nextPoint.row = currentPoint.row+1;
-                nextPoint.col = currentPoint.col+1;
+                nextPoint.row = currentPoint.row + 1;
+                nextPoint.col = currentPoint.col + 1;
                 break;
             default:
                 break;
