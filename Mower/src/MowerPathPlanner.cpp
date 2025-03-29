@@ -53,7 +53,7 @@ MowerPathPlanning::MowerPathPlanning(costmap_2d::Costmap2DROS *costmap2d_ros) //
 
     initializeMats();
     // initializeCoveredGrid();
-    ros::Duration(1).sleep();
+    ros::Duration(0.1).sleep(); //不加入此句会导致rviz中路径话题订阅异常
     // imshow("debugMapImage",srcMap_);
     // imshow("debugCellMatImage",cellMat_);
     // waitKey(0);
@@ -301,7 +301,7 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
             {
                 it = freeSpaceVec_.erase(it); //从空闲栅格存储数组中移除当前点
                 continue;
-            }
+            } 
             it++;
         }
 
@@ -310,6 +310,9 @@ void MowerPathPlanning::mainPlanningLoop() //主算法函数 生物激励神经�
         float max_v = -300;
         neuralizedMat_.at<float>(currentPoint.row, currentPoint.col) = -250; //保留疑问，为何前面初始化后，此处依然对活力值进行重新赋值
                                                                              //答：此处赋值是为标识该处已经被遍历
+/*===========================================================================*/        
+        //lasttheta = currentPoint.theta; //加入次句变为回字型遍历
+/*===========================================================================*/     
         for(int id = 0; id < 8; id++)
         {
             deltaTheta = max(thetaVec[id], lasttheta) - min(thetaVec[id], lasttheta);
